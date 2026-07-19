@@ -8,13 +8,17 @@ from easysplat.core.trainer import TrainRequest, build_train_command
 
 
 def test_expand_command_pip_token(tmp_path):
+    # build expectations from Path objects: str(Path("/bin/uv")) is
+    # backslashed on Windows
+    uv = Path("/bin/uv")
+    python = Path("/venv/bin/python")
     cmd = expand_command(
         ("{pip}", "-r", "{repo}/requirements.txt"),
         {"repo": "/r"},
-        uv=Path("/bin/uv"),
-        python=Path("/venv/bin/python"),
+        uv=uv,
+        python=python,
     )
-    assert cmd == ["/bin/uv", "pip", "install", "--python", "/venv/bin/python", "-r", "/r/requirements.txt"]
+    assert cmd == [str(uv), "pip", "install", "--python", str(python), "-r", "/r/requirements.txt"]
 
 
 def test_expand_command_script_token(tmp_path):
