@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "easysplat"
-version = "0.1.0"
+version = "0.1.1"
 description = "Terminal UI for training Gaussian splats from images or video — downloads models on demand, builds COLMAP data automatically."
 readme = "README.md"
 requires-python = ">=3.10"

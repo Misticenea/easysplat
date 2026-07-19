@@ -46,9 +46,12 @@ class GPUInfo:
 
 
 def _run(cmd: list[str]) -> str:
+    from easysplat.core.proc import clean_base_env
+
     try:
         out = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=10, check=False
+            cmd, capture_output=True, text=True, timeout=10, check=False,
+            env=clean_base_env(),
         )
         return out.stdout or ""
     except (OSError, subprocess.TimeoutExpired):

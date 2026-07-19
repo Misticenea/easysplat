@@ -4,10 +4,44 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from pathlib import Path
 from typing import Callable, Sequence
 
 LineCallback = Callable[[str], None]
+
+_LIB_PATH_VARS = ("LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH")
+
+
+def clean_base_env() -> dict[str, str]:
+    """os.environ with PyInstaller's bundled-library paths removed.
+
+    One-file builds extract to a temp dir and point LD_LIBRARY_PATH at it so
+    the app itself can load its bundled libraries — but child processes
+    (git, ffmpeg, colmap, uv, trainers) must load the *system* libraries, or
+    they crash with symbol-version mismatches like
+    "libssl.so.3: version 'OPENSSL_3.2.0' not found".
+    """
+    env = dict(os.environ)
+    if not getattr(sys, "frozen", False):
+        return env
+    meipass = getattr(sys, "_MEIPASS", "")
+    for var in _LIB_PATH_VARS:
+        # the bootloader saves the pre-launch value in <VAR>_ORIG
+        orig_key = f"{var}_ORIG"
+        if orig_key in env:
+            orig = env.pop(orig_key)
+            if orig:
+                env[var] = orig
+            else:
+                env.pop(var, None)
+        elif var in env:
+            parts = [p for p in env[var].split(os.pathsep) if p and p != meipass]
+            if parts:
+                env[var] = os.pathsep.join(parts)
+            else:
+                env.pop(var)
+    return env
 
 
 class CommandError(RuntimeError):
@@ -33,7 +67,7 @@ async def run_streaming(
     process = await asyncio.create_subprocess_exec(
         *[str(c) for c in cmd],
         cwd=str(cwd) if cwd else None,
-        env=env,
+        env=env if env is not None else clean_base_env(),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
         stdin=asyncio.subprocess.DEVNULL,
@@ -57,8 +91,8 @@ async def run_streaming(
 
 
 def subprocess_env(extra_paths: Sequence[Path] = (), **overrides: str) -> dict[str, str]:
-    """Copy of os.environ with extra directories prepended to PATH."""
-    env = dict(os.environ)
+    """Clean child-process environment with extra directories prepended to PATH."""
+    env = clean_base_env()
     if extra_paths:
         env["PATH"] = os.pathsep.join(
             [str(p) for p in extra_paths] + [env.get("PATH", "")]
