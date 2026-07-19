@@ -1,0 +1,137 @@
+{
+  "$comment": "EasySplat model registry. Pure data: nothing here is bundled with the app; every model is fetched from its upstream site on demand. Add a new model by appending an entry. Placeholders: {python} {pip} {uv} {repo} {model_dir} {bin} {dataset} {images} {sparse} {output} {input_image} {script:NAME}.",
+  "models": [
+    {
+      "id": "sharp",
+      "name": "Apple SHARP",
+      "description": "Sharp monocular view synthesis: predicts a 3D Gaussian splat from a SINGLE image in under a second. Feed-forward — no COLMAP needed.",
+      "source": "https://github.com/apple/ml-sharp",
+      "homepage": "https://github.com/apple/ml-sharp",
+      "input_types": ["single_image"],
+      "requires_colmap": false,
+      "backends": ["nvidia", "amd", "intel", "apple", "cpu"],
+      "python_version": "3.13",
+      "needs_torch_index": true,
+      "install_commands": [
+        ["{pip}", "-r", "{repo}/requirements.txt"],
+        ["{pip}", "-e", "{repo}"]
+      ],
+      "weights": [
+        {
+          "url": "https://ml-site.cdn-apple.com/models/sharp/sharp_2572gikvuh.pt",
+          "dest": "weights/sharp.pt"
+        }
+      ],
+      "train_command": [
+        "{script:sharp}", "predict",
+        "-i", "{input_image}",
+        "-o", "{output}",
+        "-c", "{model_dir}/weights/sharp.pt"
+      ],
+      "progress_regex": "(?P<step>\\d+)\\s*/\\s*(?P<total>\\d+)",
+      "approx_size": "~3 GB (deps + checkpoint)"
+    },
+    {
+      "id": "brush",
+      "name": "Brush",
+      "description": "Gaussian splat trainer built on WebGPU — runs on NVIDIA, AMD, Intel and Apple GPUs with a single prebuilt binary. Trains from photos or video (COLMAP built automatically).",
+      "source": "https://github.com/ArthurBrussee/brush",
+      "homepage": "https://github.com/ArthurBrussee/brush",
+      "kind": "binary",
+      "input_types": ["multi_image", "video"],
+      "requires_colmap": true,
+      "backends": ["nvidia", "amd", "intel", "apple"],
+      "binaries": {
+        "linux-x86_64": "https://github.com/ArthurBrussee/brush/releases/latest/download/brush-app-x86_64-unknown-linux-gnu.tar.xz",
+        "darwin-arm64": "https://github.com/ArthurBrussee/brush/releases/latest/download/brush-app-aarch64-apple-darwin.tar.xz",
+        "windows-x86_64": "https://github.com/ArthurBrussee/brush/releases/latest/download/brush-app-x86_64-pc-windows-msvc.zip"
+      },
+      "binary_names": ["brush_app", "brush-app", "brush"],
+      "train_command": [
+        "{bin}", "{dataset}",
+        "--export-path", "{output}",
+        "--export-name", "splat.ply"
+      ],
+      "progress_regex": "(?P<step>\\d+)\\s*/\\s*(?P<total>\\d+)",
+      "approx_size": "~50 MB"
+    },
+    {
+      "id": "gaussian-splatting-inria",
+      "name": "3D Gaussian Splatting (Inria)",
+      "description": "The original SIGGRAPH 2023 implementation. Highest quality reference trainer. Requires an NVIDIA GPU with the CUDA toolkit (builds custom kernels).",
+      "source": "https://github.com/graphdeco-inria/gaussian-splatting",
+      "homepage": "https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/",
+      "input_types": ["multi_image", "video"],
+      "requires_colmap": true,
+      "backends": ["nvidia"],
+      "git_submodules": true,
+      "python_version": "3.10",
+      "needs_torch_index": true,
+      "install_commands": [
+        ["{pip}", "torch", "torchvision"],
+        ["{pip}", "plyfile", "tqdm", "opencv-python", "joblib"],
+        ["{pip}", "{repo}/submodules/diff-gaussian-rasterization", "{repo}/submodules/simple-knn", "{repo}/submodules/fused-ssim"]
+      ],
+      "train_command": [
+        "{python}", "train.py",
+        "-s", "{dataset}",
+        "-m", "{output}"
+      ],
+      "progress_regex": "(?P<step>\\d+)\\s*/\\s*(?P<total>\\d+)",
+      "approx_size": "~6 GB (CUDA deps)"
+    },
+    {
+      "id": "gsplat",
+      "name": "gsplat (Nerfstudio project)",
+      "description": "Fast, memory-efficient CUDA splat trainer from the Nerfstudio team. Uses the simple_trainer example on a COLMAP dataset. NVIDIA GPUs.",
+      "source": "https://github.com/nerfstudio-project/gsplat",
+      "homepage": "https://docs.gsplat.studio",
+      "input_types": ["multi_image", "video"],
+      "requires_colmap": true,
+      "backends": ["nvidia"],
+      "python_version": "3.10",
+      "needs_torch_index": true,
+      "install_commands": [
+        ["{pip}", "torch", "torchvision"],
+        ["{pip}", "gsplat"],
+        ["{pip}", "-r", "{repo}/examples/requirements.txt"]
+      ],
+      "train_command": [
+        "{python}", "examples/simple_trainer.py", "default",
+        "--data-dir", "{dataset}",
+        "--data-factor", "1",
+        "--result-dir", "{output}",
+        "--disable-viewer"
+      ],
+      "progress_regex": "(?P<step>\\d+)\\s*/\\s*(?P<total>\\d+)",
+      "approx_size": "~7 GB (CUDA deps)"
+    },
+    {
+      "id": "nerfstudio-splatfacto",
+      "name": "Nerfstudio splatfacto",
+      "description": "Nerfstudio's production splat pipeline (splatfacto). Rich tooling and exports. NVIDIA GPUs.",
+      "source": "https://github.com/nerfstudio-project/nerfstudio",
+      "homepage": "https://docs.nerf.studio",
+      "input_types": ["multi_image", "video"],
+      "requires_colmap": true,
+      "backends": ["nvidia"],
+      "python_version": "3.10",
+      "needs_torch_index": true,
+      "install_commands": [
+        ["{pip}", "torch", "torchvision"],
+        ["{pip}", "nerfstudio"]
+      ],
+      "train_command": [
+        "{script:ns-train}", "splatfacto",
+        "--data", "{dataset}",
+        "--output-dir", "{output}",
+        "--viewer.quit-on-train-completion", "True",
+        "colmap",
+        "--colmap-path", "sparse/0",
+        "--images-path", "images"
+      ],
+      "progress_regex": "(?P<step>\\d+)\\s*[/(]\\s*(?P<total>\\d+)",
+      "approx_size": "~8 GB (CUDA deps)"
+    }
+  ]
+}

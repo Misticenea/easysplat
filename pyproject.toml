@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "easysplat"
+version = "0.1.0"
+description = "Terminal UI for training Gaussian splats from images or video — downloads models on demand, builds COLMAP data automatically."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "misticenea" }]
+keywords = ["gaussian-splatting", "3dgs", "tui", "terminal", "colmap"]
+classifiers = [
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+]
+dependencies = [
+    "textual>=0.80",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+easysplat = "easysplat.app:main"
+
+[project.urls]
+Homepage = "https://github.com/misticenea/easysplat"
+
+[tool.setuptools.packages.find]
+include = ["easysplat*"]
+
+[tool.setuptools.package-data]
+easysplat = ["models/catalog.json", "*.tcss"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

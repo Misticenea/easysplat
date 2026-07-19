@@ -1,0 +1,114 @@
+Screen {
+    layout: vertical;
+}
+
+#status-bar {
+    dock: bottom;
+    height: 1;
+    padding: 0 1;
+    background: $panel;
+    color: $text-muted;
+    offset-y: -1;
+}
+
+.tab-hint {
+    color: $text-muted;
+    padding: 0 1 1 1;
+}
+
+/* ---- Models tab ---- */
+
+.model-card {
+    border: round $primary;
+    padding: 0 1;
+    margin: 0 1 1 1;
+    height: auto;
+}
+
+.model-title {
+    color: $accent;
+}
+
+.model-desc {
+    color: $text;
+}
+
+.model-meta {
+    color: $text-muted;
+}
+
+.model-warn {
+    color: $warning;
+}
+
+.model-actions {
+    height: 3;
+    align-vertical: middle;
+}
+
+.model-actions Button {
+    margin-right: 2;
+    min-width: 12;
+}
+
+.model-status {
+    padding: 1 0 0 1;
+}
+
+.model-logline {
+    color: $text-muted;
+    height: 1;
+}
+
+.model-card ProgressBar {
+    padding: 0 1;
+}
+
+/* ---- Train tab ---- */
+
+#train-left {
+    width: 40%;
+    min-width: 30;
+    border-right: solid $panel;
+    padding: 0 1;
+}
+
+#train-right {
+    width: 1fr;
+    padding: 0 1;
+}
+
+#tree {
+    height: 1fr;
+}
+
+#path-input {
+    margin-bottom: 1;
+}
+
+#scan-summary {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#model-select {
+    margin-bottom: 1;
+}
+
+#train-actions {
+    height: 3;
+}
+
+#stage-label {
+    height: 1;
+    margin-top: 1;
+}
+
+#train-progress {
+    margin: 1 0;
+}
+
+#train-log {
+    height: 1fr;
+    border: round $panel;
+}
