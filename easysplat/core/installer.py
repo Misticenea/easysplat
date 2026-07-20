@@ -164,6 +164,27 @@ async def _install_prebuilt(
     on_line(f"Installed binary: {dest}")
 
 
+def install_env(spec: ModelSpec) -> dict[str, str]:
+    """Environment for a model's install commands.
+
+    When a GPU-specific PyTorch index is added, uv must be allowed to take
+    each package from whichever index has the best version: the PyTorch
+    index also hosts a few common packages (certifi, numpy, ...) at old
+    versions, and uv's default first-index strategy would pin to those and
+    fail to resolve. Both indexes are trusted, so unsafe-best-match is the
+    uv-recommended setting here.
+    """
+    env = subprocess_env(extra_paths=[paths.bin_dir(), *paths.tools_bin_dirs()])
+    if spec.needs_torch_index:
+        index = torch_index_for(detect().vendor)
+        if index:
+            env["UV_EXTRA_INDEX_URL"] = index
+            env["UV_INDEX_STRATEGY"] = "unsafe-best-match"
+            # pip compatibility for scripts that shell out to pip themselves
+            env["PIP_EXTRA_INDEX_URL"] = index
+    return env
+
+
 async def install_model(
     spec: ModelSpec,
     status_cb: StatusCallback,
@@ -222,13 +243,7 @@ async def install_model(
         "repo": str(repo),
         "model_dir": str(paths.model_dir(spec.id)),
     }
-    env = subprocess_env(extra_paths=[paths.bin_dir(), *paths.tools_bin_dirs()])
-    if spec.needs_torch_index:
-        index = torch_index_for(detect().vendor)
-        if index:
-            env["UV_EXTRA_INDEX_URL"] = index
-            # uv prefers the extra index when versions tie; pip compatibility:
-            env["PIP_EXTRA_INDEX_URL"] = index
+    env = install_env(spec)
 
     for i, command in enumerate(spec.install_commands, start=1):
         report(f"Installing dependencies ({i}/{len(spec.install_commands)})…")
