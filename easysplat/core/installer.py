@@ -24,7 +24,7 @@ from pathlib import Path
 from easysplat.core import paths, toolchain
 from easysplat.core.catalog import KIND_BINARY, ModelSpec
 from easysplat.core.downloader import download_file, extract_archive, find_file
-from easysplat.core.gpu import detect, torch_index_for
+from easysplat.core.gpu import detect, torch_backend_for, torch_index_for
 from easysplat.core.proc import LineCallback, run_streaming, subprocess_env
 from easysplat.core.toolchain import StatusCallback
 
@@ -167,19 +167,20 @@ async def _install_prebuilt(
 def install_env(spec: ModelSpec) -> dict[str, str]:
     """Environment for a model's install commands.
 
-    When a GPU-specific PyTorch index is added, uv must be allowed to take
-    each package from whichever index has the best version: the PyTorch
-    index also hosts a few common packages (certifi, numpy, ...) at old
-    versions, and uv's default first-index strategy would pin to those and
-    fail to resolve. Both indexes are trusted, so unsafe-best-match is the
-    uv-recommended setting here.
+    UV_TORCH_BACKEND redirects only torch-family packages to the GPU
+    vendor's wheel index (ROCm/CUDA/XPU/CPU); every other package resolves
+    from PyPI as usual. This keeps AMD/Intel machines from downloading the
+    default CUDA torch build and its nvidia-* dependency wheels, and avoids
+    cross-index version clashes for common packages (certifi, numpy, ...).
     """
     env = subprocess_env(extra_paths=[paths.bin_dir(), *paths.tools_bin_dirs()])
     if spec.needs_torch_index:
-        index = torch_index_for(detect().vendor)
+        vendor = detect().vendor
+        backend = torch_backend_for(vendor)
+        if backend:
+            env["UV_TORCH_BACKEND"] = backend
+        index = torch_index_for(vendor)
         if index:
-            env["UV_EXTRA_INDEX_URL"] = index
-            env["UV_INDEX_STRATEGY"] = "unsafe-best-match"
             # pip compatibility for scripts that shell out to pip themselves
             env["PIP_EXTRA_INDEX_URL"] = index
     return env

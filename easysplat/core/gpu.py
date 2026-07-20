@@ -27,6 +27,18 @@ TORCH_INDEX = {
     VENDOR_CPU: "https://download.pytorch.org/whl/cpu",
 }
 
+# uv's torch backend selector (UV_TORCH_BACKEND). Unlike an extra index,
+# it redirects ONLY torch-family packages to the vendor index, so an AMD
+# machine never downloads nvidia-* CUDA wheels and non-torch packages
+# resolve from PyPI alone. "auto" probes the CUDA driver on NVIDIA.
+TORCH_BACKEND = {
+    VENDOR_NVIDIA: "auto",
+    VENDOR_AMD: "rocm6.2",
+    VENDOR_INTEL: "xpu",
+    VENDOR_APPLE: None,
+    VENDOR_CPU: "cpu",
+}
+
 
 @dataclass(frozen=True)
 class GPUInfo:
@@ -122,3 +134,11 @@ def torch_index_for(vendor: str) -> str | None:
     if vendor == VENDOR_AMD and _platform.system() != "Linux":
         return TORCH_INDEX[VENDOR_CPU]
     return index
+
+
+def torch_backend_for(vendor: str) -> str | None:
+    import platform as _platform
+
+    if vendor == VENDOR_AMD and _platform.system() != "Linux":
+        return TORCH_BACKEND[VENDOR_CPU]
+    return TORCH_BACKEND.get(vendor)
