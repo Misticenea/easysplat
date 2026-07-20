@@ -10,7 +10,7 @@ def test_amd_gets_rocm_backend_only(monkeypatch, tmp_path):
     env = install_env(get_model("sharp"))
     # torch-family packages come from the ROCm index; nothing else is
     # redirected, so no nvidia-* CUDA wheels are ever pulled on AMD
-    assert env["UV_TORCH_BACKEND"] == "rocm6.2"
+    assert env["UV_TORCH_BACKEND"] == "rocm6.4"
     assert "UV_EXTRA_INDEX_URL" not in env
     assert "UV_INDEX_STRATEGY" not in env
     assert "rocm" in env["PIP_EXTRA_INDEX_URL"]

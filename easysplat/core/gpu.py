@@ -21,7 +21,7 @@ VENDOR_CPU = "cpu"
 # PyTorch wheel index per vendor (None = default PyPI wheels).
 TORCH_INDEX = {
     VENDOR_NVIDIA: "https://download.pytorch.org/whl/cu124",
-    VENDOR_AMD: "https://download.pytorch.org/whl/rocm6.2",
+    VENDOR_AMD: "https://download.pytorch.org/whl/rocm6.4",
     VENDOR_INTEL: "https://download.pytorch.org/whl/xpu",
     VENDOR_APPLE: None,
     VENDOR_CPU: "https://download.pytorch.org/whl/cpu",
@@ -33,7 +33,9 @@ TORCH_INDEX = {
 # resolve from PyPI alone. "auto" probes the CUDA driver on NVIDIA.
 TORCH_BACKEND = {
     VENDOR_NVIDIA: "auto",
-    VENDOR_AMD: "rocm6.2",
+    # newest ROCm index — older ones (6.2) stop at torch 2.5.x and can't
+    # satisfy current model pins like SHARP's torch==2.8.0
+    VENDOR_AMD: "rocm6.4",
     VENDOR_INTEL: "xpu",
     VENDOR_APPLE: None,
     VENDOR_CPU: "cpu",
