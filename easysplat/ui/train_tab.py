@@ -90,6 +90,10 @@ class TrainTab(Horizontal):
         select = self.query_one("#model-select", Select)
         models = self.compatible_models()
         select.set_options((spec.name, spec.id) for spec in models)
+        if models:
+            # always keep a concrete selection so Start never sees the
+            # blank sentinel (whose identity varies across Textual versions)
+            select.value = models[0].id
         start = self.query_one("#start", Button)
         start.disabled = not models
         if self.scan is not None and self.scan.kind is not None and not models:
@@ -100,7 +104,8 @@ class TrainTab(Horizontal):
 
     def on_select_changed(self, event: Select.Changed) -> None:
         event.stop()
-        self.query_one("#start", Button).disabled = event.value is Select.BLANK
+        # model ids are strings; any non-str value is the blank sentinel
+        self.query_one("#start", Button).disabled = not isinstance(event.value, str)
 
     # --- training ---------------------------------------------------------
 
@@ -108,11 +113,11 @@ class TrainTab(Horizontal):
         event.stop()
         if event.button.id == "start":
             select = self.query_one("#model-select", Select)
-            if select.value is Select.BLANK or self.scan is None:
+            if not isinstance(select.value, str) or self.scan is None:
                 return
             from easysplat.core.catalog import get_model
 
-            self.run_training(get_model(str(select.value)))
+            self.run_training(get_model(select.value))
 
     @work(exclusive=True, group="train")
     async def run_training(self, spec: ModelSpec) -> None:

@@ -1,3 +1,3 @@
 """EasySplat — terminal UI for training Gaussian splats."""
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"

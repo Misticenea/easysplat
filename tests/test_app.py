@@ -55,3 +55,35 @@ async def test_train_tab_scan_updates_summary(tmp_path):
         assert train.scan.kind == "multi_image"
         # nothing is installed in the isolated home, so training can't start
         assert app.query_one("#start").disabled
+
+
+async def test_start_with_compatible_model_uses_concrete_selection(tmp_path, monkeypatch):
+    """Clicking Start without opening the dropdown must not hit the blank
+    sentinel — regression for KeyError: 'Select.NULL'."""
+    from easysplat.core.catalog import get_model
+    from easysplat.core.gpu import GPUInfo, VENDOR_NVIDIA
+    import easysplat.ui.train_tab as train_mod
+
+    dataset = tmp_path / "scene"
+    dataset.mkdir()
+    for name in ("a.jpg", "b.jpg", "c.jpg"):
+        (dataset / name).write_bytes(b"x")
+
+    spec = get_model("gsplat")
+    monkeypatch.setattr(train_mod, "is_installed", lambda s: s.id == spec.id)
+    monkeypatch.setattr(train_mod, "detect", lambda: GPUInfo(VENDOR_NVIDIA, ""))
+
+    started: list[str] = []
+    monkeypatch.setattr(TrainTab, "run_training", lambda self, s: started.append(s.id))
+
+    app = EasySplatApp()
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.press("t")
+        train = app.query_one(TrainTab)
+        train.set_folder(dataset)
+        await pilot.pause()
+        # a compatible model is installed → Start enabled, selection concrete
+        assert not app.query_one("#start").disabled
+        app.query_one("#start").press()
+        await pilot.pause()
+        assert started == [spec.id]
