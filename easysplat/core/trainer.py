@@ -9,7 +9,7 @@ from typing import Callable
 
 from easysplat.core import paths, toolchain
 from easysplat.core.catalog import KIND_BINARY, ModelSpec
-from easysplat.core.inputs import ScanResult
+from easysplat.core.inputs import ScanResult, effective_image_dir
 from easysplat.core.installer import (
     binary_path,
     expand_command,
@@ -45,7 +45,7 @@ def build_train_command(request: TrainRequest, uv: Path) -> list[str]:
         "repo": str(repo_dir(spec)),
         "model_dir": str(paths.model_dir(spec.id)),
         "dataset": str(scan.folder),
-        "images": str(scan.folder / "images"),
+        "images": str(effective_image_dir(scan)),
         "sparse": str(scan.folder / "sparse"),
         "output": str(request.output_dir),
         "input_image": input_image,

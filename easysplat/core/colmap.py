@@ -13,7 +13,6 @@ Progress is reported per stage; raw tool output streams to the log.
 
 from __future__ import annotations
 
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -21,7 +20,7 @@ from typing import Callable
 from easysplat.core import toolchain
 from easysplat.core.catalog import INPUT_VIDEO
 from easysplat.core.gpu import VENDOR_NVIDIA, detect
-from easysplat.core.inputs import ScanResult, has_colmap_data
+from easysplat.core.inputs import ScanResult, effective_image_dir, has_colmap_data
 from easysplat.core.proc import LineCallback, run_streaming
 
 # stage_cb(stage_label, stage_index, stage_count)
@@ -51,7 +50,8 @@ def build_plan(scan: ScanResult) -> ColmapPlan:
     sequential = scan.kind == INPUT_VIDEO or count > SEQUENTIAL_THRESHOLD
     return ColmapPlan(
         dataset=dataset,
-        image_dir=dataset / "images",
+        # read images where they already are — don't copy into images/
+        image_dir=effective_image_dir(scan),
         db_path=dataset / "colmap.db",
         sparse_dir=dataset / "sparse",
         sequential=sequential,
@@ -127,24 +127,18 @@ async def prepare_dataset(
             + ". This can take a while; progress is per stage below."
         )
 
-    plan.image_dir.mkdir(parents=True, exist_ok=True)
     if scan.kind == INPUT_VIDEO:
         assert scan.video is not None
+        plan.image_dir.mkdir(parents=True, exist_ok=True)
         stage_cb("Extracting frames from video", stage, stages)
         ffmpeg = await toolchain.ensure_ffmpeg(status_cb, on_line)
         await run_streaming(
             ffmpeg_command(ffmpeg, scan.video, plan.image_dir), on_line=on_line
         )
         stage += 1
-    elif scan.image_dir is not None and scan.image_dir != plan.image_dir:
-        for img in scan.images:
-            shutil.copy2(img, plan.image_dir / img.name)
-    elif scan.image_dir == scan.folder:
-        # loose images in the dataset root: copy into images/ for the trainers
-        for img in scan.images:
-            target = plan.image_dir / img.name
-            if not target.exists():
-                shutil.copy2(img, target)
+    else:
+        # images already exist — read them in place, no duplicate images/ copy
+        on_line(f"Using images in place: {plan.image_dir}")
 
     colmap = await toolchain.ensure_colmap(status_cb, on_line)
     plan.sparse_dir.mkdir(parents=True, exist_ok=True)

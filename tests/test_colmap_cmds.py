@@ -44,6 +44,41 @@ def test_large_photo_set_uses_sequential_matching(tmp_path, monkeypatch):
     assert "sequential_matcher" in matcher_command(Path("colmap"), plan)
 
 
+def test_loose_images_used_in_place_not_duplicated(tmp_path, monkeypatch):
+    # a folder of loose photos must be read where they are, not copied
+    # into a new images/ subfolder
+    monkeypatch.setattr(colmap_mod, "detect", lambda: GPUInfo(VENDOR_AMD, ""))
+    scan = ScanResult(
+        folder=tmp_path,
+        kind=INPUT_MULTI_IMAGE,
+        images=[tmp_path / f"{i:05d}.jpg" for i in range(300)],
+        image_dir=tmp_path,
+    )
+    plan = build_plan(scan)
+    assert plan.image_dir == tmp_path  # not tmp_path / "images"
+    cmd = feature_extractor_command(Path("colmap"), plan)
+    assert str(tmp_path) in cmd
+
+
+def test_images_subfolder_used_in_place(tmp_path, monkeypatch):
+    monkeypatch.setattr(colmap_mod, "detect", lambda: GPUInfo(VENDOR_AMD, ""))
+    sub = tmp_path / "input"
+    scan = ScanResult(
+        folder=tmp_path,
+        kind=INPUT_MULTI_IMAGE,
+        images=[sub / "a.jpg", sub / "b.jpg"],
+        image_dir=sub,
+    )
+    plan = build_plan(scan)
+    assert plan.image_dir == sub
+
+
+def test_video_extracts_into_images_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(colmap_mod, "detect", lambda: GPUInfo(VENDOR_NVIDIA, ""))
+    plan = build_plan(scan_for(INPUT_VIDEO, tmp_path))
+    assert plan.image_dir == tmp_path / "images"  # frames land here
+
+
 def test_commands_reference_dataset_paths(tmp_path, monkeypatch):
     monkeypatch.setattr(colmap_mod, "detect", lambda: GPUInfo(VENDOR_NVIDIA, ""))
     plan = build_plan(scan_for(INPUT_MULTI_IMAGE, tmp_path, n_images=10))

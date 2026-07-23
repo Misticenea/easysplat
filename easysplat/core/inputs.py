@@ -39,6 +39,18 @@ class ScanResult:
         return "no images or videos found"
 
 
+def effective_image_dir(scan: "ScanResult") -> Path:
+    """Where the images actually live.
+
+    Uses the folder the images were found in so COLMAP can read them in
+    place — no duplicate ``images/`` copy. For video (no images yet) frames
+    are extracted into ``<folder>/images``.
+    """
+    if scan.image_dir is not None:
+        return scan.image_dir
+    return scan.folder / "images"
+
+
 def _list_media(folder: Path) -> tuple[list[Path], list[Path]]:
     images, videos = [], []
     try:
