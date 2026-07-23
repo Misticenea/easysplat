@@ -144,6 +144,8 @@ class TrainTab(Horizontal):
             bar.update(total=100, progress=step / total * 100)
             stage.update(f"[yellow]Training… {step}/{total}[/yellow]")
 
+        log.write(f"Model: {spec.name}")
+        log.write(f"Dataset: {self.scan.folder}  ({self.scan.summary})")
         try:
             if spec.requires_colmap:
                 stage.update("[yellow]Preparing COLMAP data…[/yellow]")

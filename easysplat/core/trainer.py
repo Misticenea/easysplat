@@ -88,6 +88,10 @@ async def train(
     # Some training scripts buffer stdout when not attached to a TTY;
     # force unbuffered output so the progress bar moves live.
     env["PYTHONUNBUFFERED"] = "1"
+    # Rust binaries (e.g. Brush) are silent by default — without this the
+    # log stays empty even while training runs. Show info-level progress.
+    if spec.kind == KIND_BINARY:
+        env.setdefault("RUST_LOG", "info")
 
     command = build_train_command(request, uv)
     cwd = repo_dir(spec) if repo_dir(spec).is_dir() else request.scan.folder

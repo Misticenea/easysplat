@@ -34,20 +34,30 @@ class ColmapPlan:
     image_dir: Path
     db_path: Path
     sparse_dir: Path
-    sequential: bool  # video frames match sequentially; photo sets exhaustively
+    sequential: bool  # ordered frames match sequentially; small photo sets exhaustively
     use_gpu: bool
+    image_count: int
+
+
+# Above this many images, exhaustive matching (O(n^2) pairs) is impractical —
+# especially on CPU when GPU SIFT is unavailable — so match sequentially,
+# which suits the ordered frame dumps / captures this app targets.
+SEQUENTIAL_THRESHOLD = 150
 
 
 def build_plan(scan: ScanResult) -> ColmapPlan:
     dataset = scan.folder
+    count = len(scan.images)
+    sequential = scan.kind == INPUT_VIDEO or count > SEQUENTIAL_THRESHOLD
     return ColmapPlan(
         dataset=dataset,
         image_dir=dataset / "images",
         db_path=dataset / "colmap.db",
         sparse_dir=dataset / "sparse",
-        sequential=scan.kind == INPUT_VIDEO,
+        sequential=sequential,
         # COLMAP's SIFT GPU path is CUDA-only.
         use_gpu=detect().vendor == VENDOR_NVIDIA,
+        image_count=count,
     )
 
 
@@ -105,6 +115,17 @@ async def prepare_dataset(
     plan = build_plan(scan)
     stages = 4 if plan.sequential else 3
     stage = 0
+
+    matcher = "sequential" if plan.sequential else "exhaustive"
+    on_line(
+        f"No COLMAP reconstruction found in {scan.folder} — building one."
+    )
+    if plan.image_count:
+        on_line(
+            f"{plan.image_count} images → {matcher} matching"
+            + ("" if plan.use_gpu else ", CPU SIFT (no CUDA GPU)")
+            + ". This can take a while; progress is per stage below."
+        )
 
     plan.image_dir.mkdir(parents=True, exist_ok=True)
     if scan.kind == INPUT_VIDEO:

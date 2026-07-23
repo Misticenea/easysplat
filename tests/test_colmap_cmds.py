@@ -7,8 +7,14 @@ from easysplat.core.gpu import GPUInfo, VENDOR_AMD, VENDOR_NVIDIA
 from easysplat.core.inputs import ScanResult
 
 
-def scan_for(kind: str, folder: Path) -> ScanResult:
-    return ScanResult(folder=folder, kind=kind, video=folder / "v.mp4" if kind == INPUT_VIDEO else None)
+def scan_for(kind: str, folder: Path, n_images: int = 1) -> ScanResult:
+    images = [folder / f"{i:05d}.jpg" for i in range(n_images)]
+    return ScanResult(
+        folder=folder,
+        kind=kind,
+        images=images if kind != INPUT_VIDEO else [],
+        video=folder / "v.mp4" if kind == INPUT_VIDEO else None,
+    )
 
 
 def test_video_plan_is_sequential(tmp_path, monkeypatch):
@@ -19,9 +25,9 @@ def test_video_plan_is_sequential(tmp_path, monkeypatch):
     assert "sequential_matcher" in matcher_command(Path("colmap"), plan)
 
 
-def test_photo_plan_is_exhaustive_and_no_gpu_on_amd(tmp_path, monkeypatch):
+def test_small_photo_set_is_exhaustive_and_no_gpu_on_amd(tmp_path, monkeypatch):
     monkeypatch.setattr(colmap_mod, "detect", lambda: GPUInfo(VENDOR_AMD, ""))
-    plan = build_plan(scan_for(INPUT_MULTI_IMAGE, tmp_path))
+    plan = build_plan(scan_for(INPUT_MULTI_IMAGE, tmp_path, n_images=30))
     assert not plan.sequential
     assert not plan.use_gpu  # COLMAP SIFT GPU path is CUDA-only
     cmd = feature_extractor_command(Path("colmap"), plan)
@@ -29,9 +35,18 @@ def test_photo_plan_is_exhaustive_and_no_gpu_on_amd(tmp_path, monkeypatch):
     assert "exhaustive_matcher" in matcher_command(Path("colmap"), plan)
 
 
+def test_large_photo_set_uses_sequential_matching(tmp_path, monkeypatch):
+    # exhaustive matching is O(n^2) — a 2000-image capture must not use it
+    monkeypatch.setattr(colmap_mod, "detect", lambda: GPUInfo(VENDOR_AMD, ""))
+    plan = build_plan(scan_for(INPUT_MULTI_IMAGE, tmp_path, n_images=2000))
+    assert plan.image_count == 2000
+    assert plan.sequential
+    assert "sequential_matcher" in matcher_command(Path("colmap"), plan)
+
+
 def test_commands_reference_dataset_paths(tmp_path, monkeypatch):
     monkeypatch.setattr(colmap_mod, "detect", lambda: GPUInfo(VENDOR_NVIDIA, ""))
-    plan = build_plan(scan_for(INPUT_MULTI_IMAGE, tmp_path))
+    plan = build_plan(scan_for(INPUT_MULTI_IMAGE, tmp_path, n_images=10))
     mapper = mapper_command(Path("colmap"), plan)
     assert str(tmp_path / "images") in mapper
     assert str(tmp_path / "sparse") in mapper
